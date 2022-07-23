@@ -1,0 +1,63 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename: Flores.ps
+////////////////////////////////////////////////////////////////////////////////
+#version 400
+
+
+/////////////////////
+// INPUT VARIABLES //
+/////////////////////
+in vec2 texCoord;
+
+//////////////////////
+// OUTPUT VARIABLES //
+//////////////////////
+out vec4 outputColor;
+
+
+///////////////////////
+// UNIFORM VARIABLES //
+///////////////////////
+uniform sampler2D BillFloresCol, BillFloresNorm;
+uniform vec3 lightDirection;
+uniform vec4 diffuseLightColor;
+uniform int FactorAmbiental;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+void main(void)
+{
+		vec4 textureColor, bump;
+	vec3 bumpNorm;
+	float lightIntensity;
+
+	// Obtener la textura difusa o de color
+	textureColor = texture(BillFloresCol, texCoord);
+	bump = texture(BillFloresNorm,texCoord);
+	bumpNorm = bump.xyz;
+	bumpNorm = 2 * bumpNorm - 1;
+	//normalizamos la normal y la multiplicamos por el vector de luz para generar sombras
+    bumpNorm = normalize(-bumpNorm);
+
+	// Calcula el monto de luz segun el vector de luz y la normal de la textura.
+	lightIntensity = clamp(dot(bumpNorm, lightDirection), 0.0f, 1.0f);
+	
+	// Determine el monto de luz de color segun la resultante con la normal.
+	outputColor =  clamp((diffuseLightColor * lightIntensity), 0.0f, 1.0f);
+
+	
+	/////////////////////////////////////////////////////
+	//aportacion ambiental al modelo de iluminacion
+	/////////////////////////////////////////////////////
+	vec4 LuzAmbiental = vec4(1,1,1,1);
+	vec4 AportAmb = LuzAmbiental * FactorAmbiental / 10000;
+
+	if(textureColor.r > .6 && textureColor.g > .6 && textureColor.b > .6){
+		discard;
+	}
+	else{
+		outputColor = outputColor * textureColor * AportAmb + 0.1;
+	}
+}

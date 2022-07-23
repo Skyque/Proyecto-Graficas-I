@@ -1,0 +1,92 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename: light.ps
+////////////////////////////////////////////////////////////////////////////////
+#version 400
+
+
+/////////////////////
+// INPUT VARIABLES //
+/////////////////////
+in vec2 texCoord;
+in vec3 normal;
+in vec3 tang;
+in vec3 binorm;
+
+//////////////////////
+// OUTPUT VARIABLES //
+//////////////////////
+out vec4 outputColor;
+
+
+///////////////////////
+// UNIFORM VARIABLES //
+///////////////////////
+uniform sampler2D TextCol1;
+uniform sampler2D TextNorm1;
+uniform sampler2D TextCol2;
+uniform sampler2D TextNorm2;
+uniform sampler2D TextCol3;
+uniform sampler2D TextNorm3;
+uniform sampler2D Blend;
+uniform vec3 lightDirection;
+uniform vec4 diffuseLightColor;
+uniform int FactorAmbiental;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+void main(void)
+{
+	vec4 textureColor, texAux, BlendMap, Normal1, Normal2;
+	vec3 bump;
+	vec3 NewNormal;
+	vec3 normalaza;
+	vec3 lightDir;
+	float lightIntensity;
+
+
+	// Obtener la textura difusa o de color
+	BlendMap = texture(Blend, texCoord / 80.0);
+	textureColor = texture(TextCol1, texCoord);
+	texAux = texture (TextCol2, texCoord);
+	textureColor = mix(textureColor, texAux, BlendMap.g);
+	texAux = texture (TextCol3, texCoord);
+	textureColor = mix(textureColor, texAux, BlendMap.b);
+
+	//obtener el mapa de normales
+	Normal1 = texture(TextNorm1, texCoord);
+	Normal2 = texture(TextNorm2, texCoord);
+	Normal1 = mix(Normal1, Normal2, BlendMap.g);
+	Normal2 = texture(TextNorm3, texCoord);
+	Normal1 = mix(Normal1, Normal2, BlendMap.b);
+	bump = Normal1.rgb;
+	//el mapa de normales va de 0 a 1 o sea de 0 a 90 grados, debe pasar de -1 a 1 y -90 a 90 grados
+	bump = 2.0 * bump - vec3(1.0,1.0,1.0);
+	//incluir la tang la binormal y la normal
+	mat3 TBN = mat3(tang, binorm, normal);
+	//afectar el mapa de normales a la nueva posicion mundial
+	normalaza = TBN * bump; 
+	//normalizamos la normal y la multiplicamos por el vector de luz para generar sombras
+    NewNormal = normalize(normalaza);
+
+	// Invertimos la direccion de la luz para calculos.
+	lightDir = -lightDirection;
+
+	// Calcula el monto de luz segun el vector de luz y la normal de la textura.
+	lightIntensity = clamp(dot(NewNormal, lightDir), 0.0f, 1.0f);
+	float l2 = clamp(dot(normal, lightDir), 0.0f, 1.0f);
+
+	// Determine el monto de luz de color segun la resultante con la normal.
+	outputColor =  clamp((diffuseLightColor * lightIntensity), 0.0f, 1.0f);
+
+	/////////////////////////////////////////////////////
+	//aportacion ambiental al modelo de iluminacion
+	/////////////////////////////////////////////////////
+	vec4 LuzAmbiental = vec4(1,1,1,1);
+	vec4 AportAmb = LuzAmbiental * FactorAmbiental / 10000;
+
+	// Multiplica la textura color final.
+	outputColor = outputColor * textureColor  * AportAmb + 0.1;
+	//outputColor = textureColor;
+}

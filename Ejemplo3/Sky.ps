@@ -1,0 +1,67 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename: light.ps
+////////////////////////////////////////////////////////////////////////////////
+#version 400
+
+
+/////////////////////
+// INPUT VARIABLES //
+/////////////////////
+in vec2 texCoord;
+
+//////////////////////
+// OUTPUT VARIABLES //
+//////////////////////
+out vec4 outputColor;
+
+
+///////////////////////
+// UNIFORM VARIABLES //
+///////////////////////
+uniform sampler2D Manana;
+uniform sampler2D Tarde;
+uniform sampler2D Noche;
+uniform int Factor;
+uniform int Fase;
+uniform vec3 lightDirection;
+uniform vec4 diffuseLightColor;
+uniform int FactorAmbiental;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+void main(void)
+{
+	vec4 textureColor, textureColor2, TexturaSalida;
+	/////////////////////////////////////////////////////
+	//aportacion ambiental al modelo de iluminacion
+	/////////////////////////////////////////////////////
+	vec4 LuzAmbiental = vec4(1,1,1,1);
+	vec4 AportAmb = LuzAmbiental * FactorAmbiental / 10000;
+
+	if(Fase == 1){
+
+	// Obtener la textura difusa o de color
+	textureColor = texture(Manana, texCoord);
+	textureColor2 = texture(Tarde, texCoord);
+
+	outputColor = mix(textureColor, textureColor2, Factor / 10000.0) * AportAmb;
+	}
+	else if(Fase == 2){
+
+	// Obtener la textura difusa o de color
+	textureColor = texture(Tarde, texCoord);
+	textureColor2 = texture(Noche, texCoord);
+
+	outputColor = mix(textureColor, textureColor2, Factor / 10000.0) * AportAmb;
+	}
+	else{
+
+	// Obtener la textura difusa o de color
+	textureColor = texture(Noche, texCoord);
+	textureColor2 = texture(Manana, texCoord);
+
+	outputColor = mix(textureColor, textureColor2, Factor / 10000.0) * AportAmb;
+	}
+}

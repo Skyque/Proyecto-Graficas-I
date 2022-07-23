@@ -1,0 +1,87 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename: Casa3.ps
+////////////////////////////////////////////////////////////////////////////////
+#version 400
+
+
+/////////////////////
+// INPUT VARIABLES //
+/////////////////////
+in vec2 texCoord;
+in vec3 normal;
+in vec3 tangente;
+in vec3 binormal;
+in vec3 posicion;
+
+//////////////////////
+// OUTPUT VARIABLES //
+//////////////////////
+out vec4 outputColor;
+
+
+///////////////////////
+// UNIFORM VARIABLES //
+///////////////////////
+uniform sampler2D Casa3Text;
+uniform sampler2D Casa3Norm;
+uniform sampler2D Casa3Spec;
+uniform vec3 lightDirection;
+uniform vec4 diffuseLightColor;
+uniform vec3 camaraDir;
+uniform int FactorAmbiental;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel Shader
+////////////////////////////////////////////////////////////////////////////////
+void main(void)
+{
+	vec4 textureColor, TextSpec;	
+	textureColor = texture(Casa3Text, texCoord);
+	TextSpec = texture(Casa3Spec, texCoord);
+
+	/////////////////////////////////////////////////////
+	//aportacion ambiental al modelo de iluminacion
+	/////////////////////////////////////////////////////
+	vec4 LuzAmbiental = vec4(1,1,1,1);
+	vec4 AportAmb = LuzAmbiental * FactorAmbiental / 10000;
+	
+	/////////////////////////////////////////////////////
+	//aportacion de luz difusa al modelo de iluminacion
+	/////////////////////////////////////////////////////
+	
+	vec4 LuzDifusa = vec4(1,1,1,1);
+	float FactorDifuso = .5;
+	float k1 = .05;
+	float k2 = .1;
+	float k3 = .05;
+	float distancia = sqrt(pow((350-posicion.x),2) + pow((0-posicion.y),2) + pow((0-posicion.z),2)); 
+	float Atenuacion = 1 /  (k1 + k2 * distancia + k3 * distancia * distancia);
+	vec3 VectorLuz = vec3(350,0,0) - posicion; //laposición va a cambiar con el sol
+	vec4 bump = texture(Casa3Norm, texCoord);
+	bump = 2 * bump - 1;
+	mat3 TBN = mat3(tangente, binormal, normal);
+	vec3 bumpNorm = normalize(TBN * vec3(bump));
+	float Difuso = clamp(dot(VectorLuz, bumpNorm), 0.0, 1.0);
+	vec4 AportDiff = LuzDifusa * FactorDifuso * Difuso * Atenuacion;
+
+	//////////////////////////////////////////////////////
+	// aportacion especular de la luz
+	//////////////////////////////////////////////////////
+    vec4 LuzEspecular = vec4(1,1,1,1);
+	float FactorEspecular = .15;
+	vec3 CamPos = vec3(0,0,100);
+	vec3 DireccionVista = normalize(CamPos - posicion);
+	vec3 DireccionReflejo = normalize(reflect(VectorLuz, bumpNorm));
+	float Especularidad = pow(max(dot(-DireccionVista, DireccionReflejo), 0.0), 30); //Factor shininess (controla dednsidad de luz)
+	vec4 AportEspec = LuzEspecular * FactorEspecular * Especularidad * TextSpec;
+
+
+	if(textureColor.a < .1){
+		discard;
+	}
+	else{
+		outputColor = textureColor * (AportAmb + AportDiff + AportEspec);
+	}
+	
+}
